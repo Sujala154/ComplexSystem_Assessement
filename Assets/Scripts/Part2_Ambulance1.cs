@@ -12,28 +12,22 @@ public class WorkshopAmbulance1 : MonoBehaviour
     public float baseSpeed = 8f;
     [Range(0, 10)]
     public int numberOfItems = 3;
-    public float returnSpeedMultiplier = 1.2f; // How much faster returning trip should be
-    private bool isReturning = false;          // To track if ambulance is returning
-
-
-    [Header("Status for UI")]
-    public float currentSpeed;        // realtime speed
-    public int itemsCarried;          // patients carried
-    public float totalDistance;       // go + return distance
-    public string deliveryStatus;     // In Progress / Delivered
-
     public float waypointThreshold = 0.5f;
     public float turnSpeed = 5f;
     public float stopDurationAtGoal = 3f;
 
-    [Header("Collision Avoidance")]
-    public float yieldSpeedThreshold = 0.5f;
-    public float headOnDistance = 4f;
-    public float waitTimeOnYield = 2f;
-    public float sideStepStrength = 1.2f;
-    public float slowDownFactor = 0.35f;
+    [Header("Global Speeds")]
+    public float maxReturnSpeed = 12f; // SAME for all ambulances
+
+    [Header("Status for UI")]
+    public float currentSpeed;
+    public int itemsCarried;
+    public float totalDistance;
+    public string deliveryStatus;
+
+    [Header("Collision Avoidance (Minimal)")]
     public float safeDistance = 3f;
-    public float earlyDetectDistance = 15f;
+    public float slowDownFactor = 0.35f;
     public float sideMoveSpeed = 2f;
 
     [Header("Patients")]
@@ -44,8 +38,7 @@ public class WorkshopAmbulance1 : MonoBehaviour
 
     private float currentMovementSpeed;
     private float targetSpeed;
-    private float nominalMovementSpeed; // movement speed without avoidance-slowing
-    private bool isYielding = false;
+    private float nominalMovementSpeed;
 
     private AStarManager aStarManager = new AStarManager();
     private List<Connection> currentPathConnections;
@@ -68,8 +61,8 @@ public class WorkshopAmbulance1 : MonoBehaviour
         float reductionFactor = 1.0f - (numberOfItems * 0.1f);
         reductionFactor = Mathf.Clamp(reductionFactor, 0.1f, 1.0f);
 
-        currentMovementSpeed = baseSpeed * reductionFactor;
-        nominalMovementSpeed = currentMovementSpeed;
+        nominalMovementSpeed = baseSpeed * reductionFactor;
+        currentMovementSpeed = nominalMovementSpeed;
         targetSpeed = nominalMovementSpeed;
     }
 
@@ -110,17 +103,15 @@ public class WorkshopAmbulance1 : MonoBehaviour
 
         yield return StartCoroutine(FollowNodes(pathNodes));
 
-        // Agent has reached hospital → STOP
+        // Reached hospital
         currentSpeed = 0f;
-
         DropAllPatients();
         deliveryStatus = "Delivered";
 
         yield return new WaitForSeconds(stopDurationAtGoal);
 
-            // Mark returning and increase nominal speed for return trip
-        isReturning = true;
-        nominalMovementSpeed *= returnSpeedMultiplier;
+        // RETURN JOURNEY (ALL SAME SPEED)
+        nominalMovementSpeed = maxReturnSpeed;
         currentMovementSpeed = nominalMovementSpeed;
         targetSpeed = nominalMovementSpeed;
 
@@ -219,7 +210,6 @@ public class WorkshopAmbulance1 : MonoBehaviour
                 );
 
                 float moved = Vector3.Distance(transform.position, prevPos);
-
                 totalDistance += moved;
                 runDistance += moved;
 
@@ -252,27 +242,24 @@ public class WorkshopAmbulance1 : MonoBehaviour
     {
         nearbyAgents.RemoveAll(a => a == null);
 
-        bool shouldAvoid = false;
-        Vector3 avoidanceDirection = Vector3.zero;
+        bool tooClose = false;
+        Vector3 pushDir = Vector3.zero;
 
         foreach (WorkshopAmbulance1 other in nearbyAgents)
         {
-            Vector3 toOther = other.transform.position - transform.position;
-            float distance = toOther.magnitude;
+            float dist = Vector3.Distance(transform.position, other.transform.position);
 
-            if (distance > earlyDetectDistance) continue;
-
-            if (distance < safeDistance)
+            if (dist < safeDistance)
             {
-                shouldAvoid = true;
-                avoidanceDirection -= toOther.normalized;
+                tooClose = true;
+                pushDir += (transform.position - other.transform.position).normalized;
             }
         }
 
-        if (shouldAvoid)
+        if (tooClose)
         {
             targetSpeed = nominalMovementSpeed * slowDownFactor;
-            transform.position += avoidanceDirection.normalized * sideMoveSpeed * Time.deltaTime;
+            transform.position += pushDir.normalized * sideMoveSpeed * Time.deltaTime;
         }
         else
         {
@@ -294,6 +281,7 @@ public class WorkshopAmbulance1 : MonoBehaviour
             nearbyAgents.Remove(agent);
     }
 }
+
 
 
 

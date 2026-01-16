@@ -1,12 +1,11 @@
 using UnityEngine;
 using TMPro;
 
-public class AgentUIController : MonoBehaviour
+public class AgentUIController1: MonoBehaviour
 {
-    public WorkshopAmbulance1 agent1;
-    public WorkshopAmbulance1 agent2;
-    public WorkshopAmbulance1 agent3;
-
+    public Part3_Ambulance2 agent1;
+    public Part3_Ambulance2 agent2;
+    public Part3_Ambulance2 agent3;
     public TextMeshProUGUI agent1Text;
     public TextMeshProUGUI agent2Text;
     public TextMeshProUGUI agent3Text;
